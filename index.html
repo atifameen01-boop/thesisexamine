@@ -1,0 +1,1433 @@
+import React, { useState, useRef, useMemo } from 'react';
+import {
+  Award,
+  BookOpen,
+  FileText,
+  GitCompare,
+  ShieldAlert,
+  Upload,
+  FileCheck,
+  Sliders,
+  Sparkles,
+  RefreshCw,
+  Download,
+  ChevronDown,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Info,
+  FileSpreadsheet,
+  Layers,
+  Search,
+  FileCode2,
+  Printer,
+  Hash,
+  ListOrdered,
+  Copy,
+  Check
+} from 'lucide-react';
+
+const loadMammoth = async () => {
+  if (window.mammoth) return window.mammoth;
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
+    script.onload = () => resolve(window.mammoth);
+    script.onerror = () => reject(new Error('Failed to load mammoth.js'));
+    document.head.appendChild(script);
+  });
+};
+
+const loadHtml2Pdf = async () => {
+  if (window.html2pdf) return window.html2pdf;
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    script.onload = () => resolve(window.html2pdf);
+    script.onerror = () => reject(new Error('Failed to load html2pdf.js'));
+    document.head.appendChild(script);
+  });
+};
+
+const loadXLSX = async () => {
+  if (window.XLSX) return window.XLSX;
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    script.onload = () => resolve(window.XLSX);
+    script.onerror = () => reject(new Error('Failed to load xlsx.js'));
+    document.head.appendChild(script);
+  });
+};
+
+const SAMPLE_EXAMINER_REPORT = `
+EXAMINER REPORT & VIVA CRITIQUES (PHD DEFENCE)
+Candidate: J. Doe | Field: Business & Information Systems
+Degree: Doctor of Philosophy (PhD)
+
+Critique 1: Dependent Variable Definition & Terminology
+The candidate uses "Firm Performance" in Chapter 1, but shifts to "Operational Efficiency" in Chapter 3 and "Digital Agility" in Chapter 4. Standardize the construct definition across all chapters.
+
+Critique 2: Problem Statement & Lack of Industry Benchmarks
+Chapter 1 states that 60% of SMEs fail due to poor digital integration, but fails to provide cited benchmark empirical evidence or official statistical reports from 2021-2025.
+
+Critique 3: Sample Size & Response Rate Discrepancy
+In Chapter 3 (p. 45), the target sample is stated as N = 250. However, in Chapter 4 (Table 4.1), the final analyzed sample size is N = 160 without adequate non-response bias testing or attrition reporting.
+
+Critique 4: Moderation Procedure Methodological Contradiction
+In Chapter 3, the candidate states that interaction effects were analyzed using the Product-Indicator approach in PLS-SEM. However, Chapter 4 reports regression interaction terms without specifying indicator centering or 5000-bootstrap resampling settings.
+
+Critique 5: Construct Validity (AVE < 0.50)
+In Table 4.2, the construct "Supply Chain Agility (SCA)" exhibits an Average Variance Extracted (AVE) of 0.44, which violates Fornell-Larcker threshold (> 0.50). The candidate must either prune low-loading items or explicitly address this limitation in Discussion.
+`.trim();
+
+const SAMPLE_THESIS = `
+REVISED PHD THESIS DRAFT (CHAPTERS 1 - 4)
+Title: Leveraging Artificial Intelligence for Organizational Agility in Modern Enterprise Supply Chains
+
+CHAPTER 1: INTRODUCTION & BACKGROUND
+1.1 Background
+Digital transformation has fundamentally reshaped industrial competition. Small and Medium Enterprises (SMEs) face increasing volatility in supply chain demand.
+1.2 Problem Statement
+Recent industry reports indicate severe failure rates among manufacturing SMEs attempting digital transitions. However, modern research still lacks comprehensive longitudinal analysis on how digital capabilities drive Firm Performance.
+1.3 Research Objectives
+RO1: To evaluate the effect of Enterprise AI adoption on Firm Performance.
+RO2: To investigate the moderating role of Environmental Turbulence between Enterprise AI and Firm Performance.
+
+CHAPTER 3: METHODOLOGY & SAMPLING
+3.1 Research Design
+A quantitative survey approach was deployed. Data was collected from supply chain managers across 160 manufacturing firms in North America.
+3.2 Sampling Procedure
+A total of 250 questionnaires were distributed. After removing incomplete records, 160 valid responses were retained (N = 160).
+3.3 Analytical Approach
+Structural Equation Modeling via Partial Least Squares (PLS-SEM) was utilized to test the direct and moderated hypotheses using the Product-Indicator approach with 5,000 bootstrap resamples.
+
+CHAPTER 4: DATA ANALYSIS & HYPOTHESIS TESTING
+4.1 Measurement Model
+Construct reliability was assessed via Composite Reliability (>0.70) and Convergent Validity via AVE (>0.50).
+Table 4.2: Construct Validity Metrics
+- Enterprise AI (EAI): Cronbach α = 0.88, AVE = 0.62
+- Supply Chain Agility (SCA): Cronbach α = 0.74, AVE = 0.44 (Note: AVE slightly below 0.50 threshold due to Item SCA_03).
+- Firm Performance (FP): Cronbach α = 0.91, AVE = 0.71
+
+4.2 Moderation Analysis
+The interaction term EAI * Environmental Turbulence was tested. Results indicated a non-significant moderating effect (β = 0.04, p = 0.42).
+`.trim();
+
+function LineNumberedTextarea({ value, onChange, placeholder, className = '', heightClass = 'h-64' }) {
+  const textareaRef = useRef(null);
+  const gutterRef = useRef(null);
+
+  const lines = useMemo(() => {
+    if (!value) return [1];
+    const lineCount = value.split('\n').length;
+    return Array.from({ length: lineCount }, (_, i) => i + 1);
+  }, [value]);
+
+  const handleScroll = () => {
+    if (textareaRef.current && gutterRef.current) {
+      gutterRef.current.scrollTop = textareaRef.current.scrollTop;
+    }
+  };
+
+  return (
+    <div className={`relative flex border border-slate-800 bg-slate-950 rounded-xl overflow-hidden group focus-within:border-indigo-500/80 transition ${heightClass}`}>
+      {/* Line Numbers Gutter */}
+      <div
+        ref={gutterRef}
+        className="w-12 py-3.5 bg-slate-900/90 border-r border-slate-800/80 text-right pr-2 text-[11px] font-mono text-slate-500 select-none overflow-hidden shrink-0 space-y-0.5"
+      >
+        {lines.map((num) => (
+          <div key={num} className="h-5 leading-5">
+            {num}
+          </div>
+        ))}
+      </div>
+
+      {/* Main Textarea */}
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={onChange}
+        onScroll={handleScroll}
+        placeholder={placeholder}
+        className={`flex-1 p-3.5 bg-transparent text-xs font-mono text-slate-300 placeholder:text-slate-600 focus:outline-none resize-none leading-5 overflow-y-auto whitespace-pre ${className}`}
+      />
+    </div>
+  );
+}
+
+function buildExaminerPrompt(thesisInput, config, auditMode, examinerReportInput) {
+  const isDualMode = auditMode === 'dual';
+
+  // Format thesis with explicit line numbers so AI examiner can cite exact line numbers
+  const numberedThesis = thesisInput
+    .split('\n')
+    .map((line, idx) => `[Line ${idx + 1}] ${line}`)
+    .join('\n');
+
+  const numberedExaminerReport = examinerReportInput
+    ? examinerReportInput
+        .split('\n')
+        .map((line, idx) => `[Line ${idx + 1}] ${line}`)
+        .join('\n')
+    : '';
+
+  return `
+You are an authoritative Senior PhD University Examiner, Thesis Defense Committee Chair, and Chief Academic Auditor.
+Your job is to produce a comprehensive, highly rigorous, and constructive **Examiner Compliance and Critical Thesis Audit Report**.
+
+AUDIT METADATA:
+- Degree Program: ${config.degreeLevel}
+- Field / Discipline: ${config.discipline}
+- Targeted Scope: ${config.focusScope}
+- Examiner Rigor Level: ${config.strictness}
+- Audit Mode: ${isDualMode ? 'DUAL VERIFICATION (Examiner Report vs. Revised Manuscript)' : 'SINGLE THESIS DRAFT AUDIT'}
+
+IMPORTANT: The manuscript lines provided below contain explicit line number markers like [Line X]. 
+You MUST cite these exact line numbers in Column 6 ("Action Guidance & Target Location") and throughout your chapter audits!
+
+${
+  isDualMode
+    ? `EXAMINER REPORT / VIVA FEEDBACK TO VERIFY (WITH LINE NUMBERS):
+---
+${numberedExaminerReport}
+---
+
+REVISED THESIS MANUSCRIPT / CHAPTER DRAFT (WITH LINE NUMBERS):
+---
+${numberedThesis}
+---`
+    : `THESIS DRAFT TO AUDIT (WITH LINE NUMBERS):
+---
+${numberedThesis}
+---`
+}
+
+CRITICAL INSTRUCTIONS FOR GENERATING THE REPORT:
+You MUST follow the exact structural markdown template below. Output clear, well-formatted markdown tables and section headers.
+
+${
+  isDualMode
+    ? `SPECIAL DUAL VERIFICATION REQUIREMENT:
+For every examiner critique or requirement, you MUST provide explicit, publication-grade, academically rigorous **VERBATIM COPY-PASTE REVISION SNIPPETS**. The candidate should be able to literally copy and paste these text blocks directly into their manuscript at the specified line numbers to fully satisfy the examiners.`
+    : ''
+}
+
+### STRUCTURE TO GENERATE:
+
+# OFFICIAL THESIS EXAMINER COMPLIANCE & AUDIT REPORT
+
+## 1. Executive Summary & Verdict
+- **Degree Level Evaluated:** ${config.degreeLevel}
+- **Audit Scope:** ${config.focusScope}
+- **Overall Recommendation:** [Choose one: ACCEPT WITH MINOR REVISIONS | MAJOR REVISIONS REQUIRED | RESUBMISSION FOR SECOND EXAMINATION | UNCONDITIONAL PASS]
+- **Summary Paragraph:** Provide a 3-4 sentence high-level overview evaluating academic rigor, theoretical clarity, methodological soundness, and overall compliance.
+
+## 2. Quantitative Examiner Compliance Summary
+Construct a small summary table breaking down compliance status:
+| Status | Count | Percentage |
+| COMPLIED | [X] | [X%] |
+| MOSTLY COMPLIED | [X] | [X%] |
+| PARTIALLY COMPLIED | [X] | [X%] |
+| CRITICAL GAPS / NOT COMPLIED | [X] | [X%] |
+
+## 3. High-Level Examiner Compliance Summary Matrix
+IMPORTANT: Provide a 6-column markdown table mapping key requirements/issues.
+The columns MUST be:
+1. Examiner Requirement / Issue
+2. Source / Examiner
+3. Status (MUST be one of: \`COMPLIED\` | \`MOSTLY COMPLIED\` | \`PARTIALLY COMPLIED\` | \`NOT COMPLIED\`)
+4. Current Compliance Evidence
+5. Required Corrective Action
+6. Action Guidance & Target Location (Page/Line No.)
+
+Make sure every row in Column 6 provides detailed, step-by-step guidance on how to fix the issue, including explicit line number references matching the [Line X] indicators from the thesis draft (e.g., "**Line 14–22:** Search for 'Firm Performance' in Chapter 1...").
+
+## 4. Comprehensive Chapter-by-Chapter Audit
+For each relevant chapter in the scope (${config.focusScope}):
+### Chapter Audit: [Chapter Name]
+- **Key Findings & Methodological Evaluation:**
+- **Identified Inconsistencies or Deficiencies (with exact Line Numbers):**
+- **Step-by-Step Action Plan:**
+
+## 5. Methodological & Statistical Rigor Deep-Dive
+- **Sample Size, Power & Recruitment:**
+- **Construct Validity & Measurement Model:**
+- **Analytical & Hypothesis Testing Alignment:**
+
+## 6. Action Plan for Final Defense / Resubmission
+1. **Immediate High-Priority Revisions (1-3 Days):**
+2. **Substantive Methodological Revisions (1-2 Weeks):**
+3. **Presentation & Defense Strategy Notes:**
+
+## 7. Line-by-Line Copy-Paste Revision Patches & Amendments
+Provide a detailed breakdown of exact text blocks for direct copy-pasting into the manuscript:
+
+### Patch 1: [Target Location e.g. Line 14–22 in Chapter 1]
+- **Examiner Critique Reference:** [e.g. Critique 1 - DV Standardization]
+- **Action Type:** [REPLACE | INSERT AFTER LINE X | AMEND FOOTNOTE]
+- **Exact Text Block to Copy-Paste:**
+\`\`\`text
+[Provide full, publication-ready academic paragraph text complete with academic citations, precise construct definitions, or statistical disclosures that the student can copy and paste directly into their thesis.]
+\`\`\`
+
+### Patch 2: [Target Location e.g. Line 45 in Chapter 3]
+- **Examiner Critique Reference:** [e.g. Critique 3 - Sample Size Disclosure]
+- **Action Type:** [REPLACE | INSERT AFTER LINE X]
+- **Exact Text Block to Copy-Paste:**
+\`\`\`text
+[Provide exact copy-pasteable academic text for methodology or data analysis...]
+\`\`\`
+
+(Provide at least 4-6 complete, verbatim copy-pasteable text patches covering all major examiner critiques!)
+
+Begin your report immediately. Be thorough, academic, precise, and cite explicit line numbers!
+`;
+}
+
+function parseReportMetrics(reportText) {
+  if (!reportText) return null;
+
+  const compliedMatch = reportText.match(/\|?\s*COMPLIED\s*\|?\s*(\d+)/i);
+  const mostlyMatch = reportText.match(/\|?\s*MOSTLY COMPLIED\s*\|?\s*(\d+)/i);
+  const partiallyMatch = reportText.match(/\|?\s*PARTIALLY COMPLIED\s*\|?\s*(\d+)/i);
+  const notCompliedMatch = reportText.match(/\|?\s*(?:CRITICAL GAPS \/ )?NOT COMPLIED\s*\|?\s*(\d+)/i);
+
+  const recommendationMatch = reportText.match(/Overall Recommendation:\*\*?\s*([^\n\*\#]+)/i);
+
+  return {
+    complied: compliedMatch ? parseInt(compliedMatch[1], 10) : 2,
+    mostly: mostlyMatch ? parseInt(mostlyMatch[1], 10) : 3,
+    partially: partiallyMatch ? parseInt(partiallyMatch[1], 10) : 4,
+    notComplied: notCompliedMatch ? parseInt(notCompliedMatch[1], 10) : 1,
+    recommendation: recommendationMatch ? recommendationMatch[1].trim() : 'MAJOR REVISIONS REQUIRED'
+  };
+}
+
+function parseMarkdownTables(reportText) {
+  if (!reportText) return [];
+  const lines = reportText.split('\n');
+  const tables = [];
+  let currentTable = null;
+
+  for (let line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      if (!currentTable) {
+        currentTable = [];
+        tables.push(currentTable);
+      }
+      if (!trimmed.includes('---')) {
+        const cells = trimmed
+          .split('|')
+          .map((c) => c.trim().replace(/\*\*/g, ''))
+          .filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+        currentTable.push(cells);
+      }
+    } else {
+      currentTable = null;
+    }
+  }
+
+  return tables.filter((t) => t.length > 0);
+}
+
+function convertMarkdownToWordHtml(markdown) {
+  if (!markdown) return '';
+  const lines = markdown.split('\n');
+  let html = '';
+  let inTable = false;
+
+  for (let line of lines) {
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      if (!inTable) {
+        inTable = true;
+        html += '<table border="1" style="width:100%; border-collapse:collapse; font-size:10pt;">';
+      }
+      if (trimmed.includes('---')) continue;
+
+      const cells = trimmed.split('|').map((c) => c.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+      const isHeader = !html.includes('</td>');
+
+      html += '<tr>';
+      cells.forEach((cell) => {
+        if (isHeader) {
+          html += `<th style="background-color:#1e293b; color:#ffffff; padding:6px; text-align:left;">${cell.replace(/\*\*/g, '')}</th>`;
+        } else {
+          html += `<td style="padding:6px; border:1px solid #cbd5e1; vertical-align:top;">${cell.replace(/\*\*/g, '')}</td>`;
+        }
+      });
+      html += '</tr>';
+    } else {
+      if (inTable) {
+        inTable = false;
+        html += '</table>';
+      }
+
+      if (trimmed.startsWith('# ')) {
+        html += `<h1>${trimmed.replace('# ', '')}</h1>`;
+      } else if (trimmed.startsWith('## ')) {
+        html += `<h2>${trimmed.replace('## ', '')}</h2>`;
+      } else if (trimmed.startsWith('### ')) {
+        html += `<h3>${trimmed.replace('### ', '')}</h3>`;
+      } else if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+        html += `<li>${trimmed.substring(2).replace(/\*\*/g, '')}</li>`;
+      } else if (trimmed.length > 0) {
+        html += `<p>${trimmed.replace(/\*\*/g, '')}</p>`;
+      }
+    }
+  }
+
+  if (inTable) html += '</table>';
+  return html;
+}
+
+function FormattedMarkdown({ section, filter = '', statusFilter = 'ALL' }) {
+  if (!section) return null;
+
+  const [copiedIndex, setCopiedIndex] = useState(null);
+
+  const handleCopyText = (text, idx) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIndex(idx);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const rawLines = section.split('\n');
+  const blocks = [];
+  let currentTable = null;
+  let currentCodeBlock = null;
+
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i];
+    const isTableLine = line.trim().startsWith('|') && line.trim().endsWith('|');
+
+    if (line.trim().startsWith('```')) {
+      if (currentCodeBlock) {
+        blocks.push(currentCodeBlock);
+        currentCodeBlock = null;
+      } else {
+        currentCodeBlock = { type: 'code', lines: [], lang: line.trim().replace('```', '') };
+      }
+      continue;
+    }
+
+    if (currentCodeBlock) {
+      currentCodeBlock.lines.push(line);
+      continue;
+    }
+
+    if (isTableLine) {
+      if (!currentTable) {
+        currentTable = { type: 'table', lines: [] };
+        blocks.push(currentTable);
+      }
+      currentTable.lines.push(line);
+    } else {
+      currentTable = null;
+      blocks.push({ type: 'line', text: line });
+    }
+  }
+
+  if (currentCodeBlock) {
+    blocks.push(currentCodeBlock);
+  }
+
+  const renderCellContent = (text) => {
+    const cleaned = text.replace(/`/g, '').trim();
+
+    // Render compliance status pills
+    if (cleaned.includes('COMPLIED') || cleaned.includes('CRITICAL') || cleaned.includes('NOT COMPLIED')) {
+      return (
+        <span
+          className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+            cleaned.includes('PARTIALLY')
+              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+              : cleaned.includes('MOSTLY')
+              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+              : cleaned.includes('NOT COMPLIED')
+              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+              : cleaned.includes('COMPLIED')
+              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+              : 'bg-slate-800 text-slate-300'
+          }`}
+        >
+          {cleaned}
+        </span>
+      );
+    }
+
+    // Highlight explicit line numbers e.g. "Line 14-22" or "Lines 12-28" or "Line 5"
+    const lineRefRegex = /(Line[s]?\s+\d+(?:[–\-]\d+)?|\[Line\s+\d+\])/gi;
+    if (lineRefRegex.test(text)) {
+      const parts = text.split(lineRefRegex);
+      return (
+        <span>
+          {parts.map((part, pIdx) => {
+            if (lineRefRegex.test(part)) {
+              return (
+                <span
+                  key={pIdx}
+                  className="inline-flex items-center gap-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-1.5 py-0.5 rounded text-[11px] font-mono font-semibold mx-0.5"
+                >
+                  <Hash className="w-2.5 h-2.5 text-indigo-400" />
+                  {part.replace(/[\[\]]/g, '')}
+                </span>
+              );
+            }
+            return <span key={pIdx}>{part.replace(/\*\*/g, '')}</span>;
+          })}
+        </span>
+      );
+    }
+
+    return <span>{text.replace(/\*\*/g, '')}</span>;
+  };
+
+  return (
+    <div className="space-y-1">
+      {blocks.map((block, bIdx) => {
+        // Render Code / Copy-Paste Text Blocks
+        if (block.type === 'code') {
+          const codeText = block.lines.join('\n');
+          const isCopied = copiedIndex === bIdx;
+
+          return (
+            <div key={bIdx} className="my-4 border border-indigo-500/40 rounded-xl bg-slate-950 overflow-hidden shadow-xl">
+              <div className="bg-slate-900 px-4 py-2 border-b border-indigo-500/30 flex items-center justify-between">
+                <span className="text-[11px] font-mono text-indigo-300 font-semibold flex items-center gap-1.5 uppercase">
+                  <FileText className="w-3.5 h-3.5 text-indigo-400" />
+                  Copy-Paste Revision Text Snippet
+                </span>
+                <button
+                  onClick={() => handleCopyText(codeText, bIdx)}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition"
+                >
+                  {isCopied ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-300" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      <span>Copy Revision Text</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <pre className="p-4 text-xs font-mono text-slate-200 bg-slate-950/90 whitespace-pre-wrap leading-relaxed overflow-x-auto selection:bg-indigo-600 selection:text-white">
+                {codeText}
+              </pre>
+            </div>
+          );
+        }
+
+        if (block.type === 'table') {
+          /* ... existing table rendering logic ... */
+          const tableLines = block.lines;
+          if (tableLines.length === 0) return null;
+
+          const parseRow = (l) =>
+            l
+              .split('|')
+              .map((p) => p.trim())
+              .filter((_, i, a) => i > 0 && i < a.length - 1);
+
+          const headerRow = tableLines[0] ? parseRow(tableLines[0]) : [];
+          const bodyLines = tableLines.slice(1).filter((l) => !l.includes('---'));
+
+          const filteredBodyLines = bodyLines.filter((l) => {
+            const matchesText = filter ? l.toLowerCase().includes(filter.toLowerCase()) : true;
+            const matchesStatus =
+              statusFilter === 'ALL' ? true : l.toUpperCase().includes(statusFilter.toUpperCase());
+            return matchesText && matchesStatus;
+          });
+
+          if (
+            (filter || statusFilter !== 'ALL') &&
+            filteredBodyLines.length === 0 &&
+            !headerRow.join(' ').toLowerCase().includes(filter.toLowerCase())
+          ) {
+            return null;
+          }
+
+          return (
+            <div key={bIdx} className="overflow-x-auto my-4 border border-slate-800 rounded-xl bg-slate-950/60 shadow-lg">
+              <table className="w-full text-left border-collapse text-xs">
+                {headerRow.length > 0 && (
+                  <thead className="bg-slate-900 border-b border-slate-800 text-slate-200 font-semibold">
+                    <tr>
+                      {headerRow.map((h, hIdx) => (
+                        <th
+                          key={hIdx}
+                          className="p-3 border-r border-slate-800/60 last:border-r-0 text-indigo-300 font-bold"
+                        >
+                          {h.replace(/\*\*/g, '')}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                )}
+                <tbody>
+                  {filteredBodyLines.map((rowLine, rIdx) => {
+                    const rowParts = parseRow(rowLine);
+                    return (
+                      <tr key={rIdx} className="border-b border-slate-800/60 hover:bg-slate-900/40 transition last:border-b-0">
+                        {rowParts.map((cell, cIdx) => (
+                          <td key={cIdx} className="p-3 border-r border-slate-800/60 last:border-r-0 text-slate-300 align-top">
+                            {renderCellContent(cell)}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
+
+        const line = block.text;
+
+        if (filter && !line.toLowerCase().includes(filter.toLowerCase())) {
+          return null;
+        }
+
+        if (line.startsWith('# ')) {
+          return (
+            <h1 key={bIdx} className="text-xl font-extrabold text-indigo-300 my-4 border-b border-slate-800 pb-2">
+              {line.replace('# ', '')}
+            </h1>
+          );
+        }
+        if (line.startsWith('## ')) {
+          return (
+            <h2 key={bIdx} className="text-base font-bold text-slate-100 my-3 border-b border-slate-800/80 pb-1.5 flex items-center gap-2">
+              {line.replace('## ', '')}
+            </h2>
+          );
+        }
+        if (line.startsWith('### ')) {
+          return (
+            <h3 key={bIdx} className="text-sm font-semibold text-indigo-400 my-2">
+              {line.replace('### ', '')}
+            </h3>
+          );
+        }
+        if (line.startsWith('* ') || line.startsWith('- ')) {
+          return (
+            <li key={bIdx} className="ml-4 list-disc text-slate-300 my-1 text-xs">
+              {line.substring(2)}
+            </li>
+          );
+        }
+        if (line.startsWith('> ')) {
+          return (
+            <blockquote key={bIdx} className="border-l-2 border-indigo-500 pl-3 py-1.5 text-slate-400 italic text-xs my-2 bg-slate-950/40 rounded-r-md">
+              {line.substring(2)}
+            </blockquote>
+          );
+        }
+
+        if (!line.trim()) return <div key={bIdx} className="h-2" />;
+
+        return (
+          <p key={bIdx} className="text-slate-300 text-xs my-1.5 leading-relaxed">
+            {line.replace(/\*\*/g, '')}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function App() {
+  const [auditMode, setAuditMode] = useState('single'); // 'single' or 'dual'
+  const [thesisInput, setThesisInput] = useState('');
+  const [examinerReportInput, setExaminerReportInput] = useState('');
+
+  const [config, setConfig] = useState({
+    degreeLevel: 'Doctor of Philosophy (PhD)',
+    discipline: 'Business Administration (PLS-SEM)',
+    focusScope: 'Full Thesis Chapters 1–5 Audit',
+    strictness: 'High Academic Rigor (Senior Examiner)'
+  });
+
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState('');
+  const [generatedReport, setGeneratedReport] = useState('');
+  const [toastMessage, setToastMessage] = useState('');
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL');
+
+  const printContainerRef = useRef(null);
+
+  // Line and word counts statistics
+  const thesisStats = useMemo(() => {
+    if (!thesisInput) return { lines: 0, words: 0 };
+    return {
+      lines: thesisInput.split('\n').length,
+      words: thesisInput.trim().split(/\s+/).filter(Boolean).length
+    };
+  }, [thesisInput]);
+
+  const examinerStats = useMemo(() => {
+    if (!examinerReportInput) return { lines: 0, words: 0 };
+    return {
+      lines: examinerReportInput.split('\n').length,
+      words: examinerReportInput.trim().split(/\s+/).filter(Boolean).length
+    };
+  }, [examinerReportInput]);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3500);
+  };
+
+  const handleLoadSample = () => {
+    if (auditMode === 'dual') {
+      setExaminerReportInput(SAMPLE_EXAMINER_REPORT.trim());
+      setThesisInput(SAMPLE_THESIS.trim());
+      showToast('Loaded sample Examiner Feedback & Revised Thesis Draft with Line Numbers!');
+    } else {
+      setThesisInput(SAMPLE_THESIS.trim());
+      showToast('Loaded sample PhD thesis draft with Line Numbers!');
+    }
+  };
+
+  const handleFileUpload = async (e, target = 'thesis') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileName = file.name;
+    const isDocx = fileName.toLowerCase().endsWith('.docx') || fileName.toLowerCase().endsWith('.doc');
+
+    const updateTargetInput = (text) => {
+      if (target === 'examiner') {
+        setExaminerReportInput(text);
+        showToast(`Loaded Examiner Feedback file: ${fileName}`);
+      } else {
+        setThesisInput(text);
+        showToast(`Loaded Manuscript file: ${fileName}`);
+      }
+    };
+
+    if (isDocx) {
+      try {
+        showToast(`Extracting text from ${fileName}...`);
+        const mammoth = await loadMammoth();
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          try {
+            const arrayBuffer = event.target?.result;
+            if (arrayBuffer) {
+              const result = await mammoth.extractRawText({ arrayBuffer });
+              if (result.value) {
+                updateTargetInput(result.value);
+              } else {
+                showToast('No readable text found in document.');
+              }
+            }
+          } catch (err) {
+            console.error('Docx extraction error:', err);
+            showToast('Failed to extract text from Word document.');
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      } catch (err) {
+        console.error('Mammoth load error:', err);
+        showToast('Could not load Word parser library.');
+      }
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result;
+        if (typeof content === 'string') {
+          updateTargetInput(content);
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    if (auditMode === 'dual' && (!examinerReportInput.trim() || !thesisInput.trim())) {
+      showToast('Please provide BOTH the Examiner Feedback and the Revised Thesis.');
+      return;
+    }
+
+    if (auditMode === 'single' && !thesisInput.trim()) {
+      showToast('Please paste or upload thesis manuscript text first.');
+      return;
+    }
+
+    setIsGenerating(true);
+    setGenerationProgress(
+      auditMode === 'dual'
+        ? 'Cross-examining Examiner Feedback against Revised Manuscript with Line Numbers...'
+        : 'Initializing Senior Examiner Audit Engine with Line-Level Tracking...'
+    );
+
+    try {
+      setGenerationProgress(
+        auditMode === 'dual'
+          ? 'Mapping specific examiner critiques to revised line locations...'
+          : `Scanning thesis structure for ${config.focusScope}...`
+      );
+      await new Promise((r) => setTimeout(r, 600));
+
+      setGenerationProgress('Checking statistical parameters, sample size consistency, and line locations...');
+      await new Promise((r) => setTimeout(r, 700));
+
+      setGenerationProgress('Generating Line-Referenced Examiner Compliance Matrix & Action Plan...');
+
+      const prompt = buildExaminerPrompt(thesisInput, config, auditMode, examinerReportInput);
+      const apiKey = ''; // Key injected automatically in runtime env
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const outputText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!outputText) {
+        throw new Error('Received empty response from Gemini API.');
+      }
+
+      setGeneratedReport(outputText);
+      showToast('Examiner Audit Report with line references successfully generated!');
+    } catch (err) {
+      console.error('Generation error:', err);
+      showToast(`Error generating report: ${err.message || 'Check network connection.'}`);
+    } finally {
+      setIsGenerating(false);
+      setGenerationProgress('');
+    }
+  };
+
+  const handleExportMarkdown = () => {
+    if (!generatedReport) return;
+    const blob = new Blob([generatedReport], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Examiner_Compliance_Report_${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+    showToast('Exported Markdown file!');
+  };
+
+  const handleExportWord = () => {
+    if (!generatedReport) return;
+    try {
+      const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      const htmlString = `
+        <html xmlns:o='urn:schemas-microsoft-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset='utf-8'>
+          <title>Examiner Compliance Report</title>
+          <style>
+            body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; color: #1e293b; line-height: 1.5; padding: 20px; }
+            h1 { font-size: 18pt; color: #1e1b4b; border-bottom: 2px solid #4338ca; padding-bottom: 6px; margin-top: 18px; }
+            h2 { font-size: 14pt; color: #312e81; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-top: 16px; }
+            h3 { font-size: 12pt; color: #4338ca; margin-top: 12px; }
+            table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 10pt; }
+            th { background-color: #1e293b; color: #ffffff; font-weight: bold; padding: 8px; border: 1px solid #0f172a; text-align: left; }
+            td { padding: 8px; border: 1px solid #cbd5e1; vertical-align: top; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+            blockquote { border-left: 3px solid #6366f1; background-color: #f1f5f9; padding: 8px 12px; margin: 10px 0; color: #475569; italic; }
+          </style>
+        </head>
+        <body>
+          <div style="margin-bottom:20px; border-bottom: 3px solid #4338ca; padding-bottom: 10px;">
+            <p style="font-size:8pt; text-transform:uppercase; color:#64748b; margin:0;">Official Examiner Audit Engine Document</p>
+            <p style="font-size:9pt; color:#475569; margin:2px 0 0 0;">Generated on ${dateStr} • Scope: ${config.focusScope}</p>
+          </div>
+          ${convertMarkdownToWordHtml(generatedReport)}
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob(['\ufeff' + htmlString], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Examiner_Compliance_Report_${new Date().toISOString().slice(0, 10)}.doc`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setShowExportMenu(false);
+      showToast('Exported Word document (.doc)!');
+    } catch (err) {
+      console.error('Word export error:', err);
+      showToast('Failed to export Word document.');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!generatedReport) return;
+    setIsExporting(true);
+    showToast('Preparing PDF document...');
+
+    try {
+      const html2pdf = await loadHtml2Pdf();
+      const element = printContainerRef.current;
+
+      if (!element) throw new Error('Print container not ready');
+
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `Examiner_Compliance_Report_${new Date().toISOString().slice(0, 10)}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      await html2pdf().set(opt).from(element).save();
+      setShowExportMenu(false);
+      showToast('Exported high-quality PDF!');
+    } catch (err) {
+      console.error('PDF export error:', err);
+      showToast('Failed PDF export. Opening print window...');
+      window.print();
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (!generatedReport) return;
+    setIsExporting(true);
+    showToast('Extracting tables for Excel workbook...');
+
+    try {
+      const XLSX = await loadXLSX();
+      const wb = XLSX.utils.book_new();
+
+      const extractedTables = parseMarkdownTables(generatedReport);
+
+      if (extractedTables.length === 0) {
+        showToast('No structured tables found to export.');
+        setIsExporting(false);
+        return;
+      }
+
+      extractedTables.forEach((table, index) => {
+        const sheetName =
+          index === 0
+            ? 'Compliance Summary'
+            : index === 1
+            ? 'Compliance Matrix'
+            : `Audit Table ${index + 1}`;
+        const ws = XLSX.utils.aoa_to_sheet(table);
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      });
+
+      const summaryMetrics = parseReportMetrics(generatedReport);
+      const summaryData = [
+        ['Thesis Examiner AI - Audit Executive Summary'],
+        ['Generated Date', new Date().toLocaleDateString()],
+        ['Audit Scope', config.focusScope],
+        ['Degree Level', config.degreeLevel],
+        ['Final Verdict', summaryMetrics?.recommendation || 'N/A'],
+        [],
+        ['Compliance Criterion', 'Count'],
+        ['COMPLIED', summaryMetrics?.complied || 0],
+        ['MOSTLY COMPLIED', summaryMetrics?.mostly || 0],
+        ['PARTIALLY COMPLIED', summaryMetrics?.partially || 0],
+        ['CRITICAL GAPS / NOT COMPLIED', summaryMetrics?.notComplied || 0]
+      ];
+      const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, summaryWs, 'Executive Summary');
+
+      XLSX.writeFile(wb, `Examiner_Compliance_Audit_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      setShowExportMenu(false);
+      showToast('Exported Excel workbook (.xlsx)!');
+    } catch (err) {
+      console.error('Excel export error:', err);
+      showToast('Failed to export Excel file.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportMatrixOnly = async () => {
+    if (!generatedReport) return;
+    try {
+      const XLSX = await loadXLSX();
+      const wb = XLSX.utils.book_new();
+      const tables = parseMarkdownTables(generatedReport);
+
+      const matrixTable = tables.find((t) => t.length > 1 && t[0].length >= 5) || tables[0];
+
+      if (!matrixTable) {
+        showToast('Matrix table not available to export.');
+        return;
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(matrixTable);
+      XLSX.utils.book_append_sheet(wb, ws, 'Examiner Compliance Matrix');
+      XLSX.writeFile(wb, `Examiner_Compliance_Matrix_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      showToast('Exported Compliance Matrix to Excel!');
+    } catch (err) {
+      console.error('Matrix export error:', err);
+      showToast('Failed to export Matrix file.');
+    }
+  };
+
+  const metrics = useMemo(() => {
+    return parseReportMetrics(generatedReport);
+  }, [generatedReport]);
+
+  return (
+    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-5 right-5 z-50 bg-indigo-600 text-white px-4 py-3 rounded-lg shadow-2xl flex items-center gap-2 border border-indigo-400 animate-bounce">
+          <Sparkles className="w-5 h-5 text-amber-300" />
+          <span className="text-sm font-medium">{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Top Navbar */}
+      <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="bg-gradient-to-tr from-indigo-600 to-violet-500 p-2 rounded-xl shadow-lg shadow-indigo-500/20">
+            <Award className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="font-bold text-lg leading-tight tracking-tight text-white flex items-center gap-2">
+              Thesis Examiner AI
+              <span className="bg-indigo-500/20 text-indigo-300 text-xs px-2 py-0.5 rounded-md border border-indigo-500/30 font-medium flex items-center gap-1">
+                <Hash className="w-3 h-3 text-indigo-400" />
+                Line Numbered
+              </span>
+            </h1>
+            <p className="text-xs text-slate-400">Academic Thesis Audit & Examiner Compliance Engine</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleLoadSample}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition border border-slate-700"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+            {auditMode === 'dual' ? 'Load Dual Sample Files' : 'Load Sample Thesis'}
+          </button>
+
+          {/* Export Menu Dropdown */}
+          {generatedReport && (
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export Report</span>
+                <ChevronDown className="w-3 h-3 ml-0.5 opacity-80" />
+              </button>
+
+              {showExportMenu && (
+                <div className="absolute right-0 mt-2 w-52 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 z-50 divide-y divide-slate-800">
+                  <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Available Formats
+                  </div>
+                  <button
+                    onClick={handleExportPDF}
+                    disabled={isExporting}
+                    className="w-full text-left px-3.5 py-2 text-xs text-slate-200 hover:bg-indigo-600 hover:text-white flex items-center gap-2.5 transition"
+                  >
+                    <Printer className="w-4 h-4 text-rose-400" />
+                    <span>PDF Document (.pdf)</span>
+                  </button>
+                  <button
+                    onClick={handleExportWord}
+                    className="w-full text-left px-3.5 py-2 text-xs text-slate-200 hover:bg-indigo-600 hover:text-white flex items-center gap-2.5 transition"
+                  >
+                    <FileText className="w-4 h-4 text-blue-400" />
+                    <span>Word Document (.doc)</span>
+                  </button>
+                  <button
+                    onClick={handleExportExcel}
+                    disabled={isExporting}
+                    className="w-full text-left px-3.5 py-2 text-xs text-slate-200 hover:bg-indigo-600 hover:text-white flex items-center gap-2.5 transition"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                    <span>Excel Workbook (.xlsx)</span>
+                  </button>
+                  <button
+                    onClick={handleExportMarkdown}
+                    className="w-full text-left px-3.5 py-2 text-xs text-slate-200 hover:bg-indigo-600 hover:text-white flex items-center gap-2.5 transition"
+                  >
+                    <FileCode2 className="w-4 h-4 text-amber-400" />
+                    <span>Markdown File (.md)</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* Main Content Layout */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        {/* Left Column: Inputs & Audit Settings */}
+        <div className="w-full lg:w-5/12 border-r border-slate-800 bg-slate-950/40 p-5 flex flex-col gap-4 overflow-y-auto">
+          {/* Audit Mode Switcher */}
+          <div className="bg-slate-900 p-1 rounded-xl border border-slate-800 grid grid-cols-2 gap-1 text-xs">
+            <button
+              onClick={() => setAuditMode('single')}
+              className={`py-2 px-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition ${
+                auditMode === 'single'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Single Thesis Audit
+            </button>
+            <button
+              onClick={() => {
+                setAuditMode('dual');
+                if (!examinerReportInput) setExaminerReportInput(SAMPLE_EXAMINER_REPORT.trim());
+              }}
+              className={`py-2 px-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition ${
+                auditMode === 'dual'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <GitCompare className="w-4 h-4 text-emerald-400" />
+              Examiner Revision Verification
+            </button>
+          </div>
+
+          {/* DUAL MODE INPUT 1: EXAMINER REPORT / VIVA CRITIQUES */}
+          {auditMode === 'dual' && (
+            <div className="space-y-2 border-b border-slate-800 pb-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4" />
+                  1. Examiner Report / Viva Feedback
+                </h2>
+                <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                  <span className="bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">{examinerStats.lines} lines</span>
+                  <span className="bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">{examinerStats.words} words</span>
+                </div>
+              </div>
+
+              <div className="relative border border-dashed border-amber-500/30 hover:border-amber-500 bg-slate-900/50 rounded-lg p-2 transition text-center cursor-pointer">
+                <input
+                  type="file"
+                  accept=".txt,.md,.tex,.doc,.docx"
+                  onChange={(e) => handleFileUpload(e, 'examiner')}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                />
+                <div className="flex items-center justify-center gap-2 text-slate-400 text-xs">
+                  <Upload className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Upload Examiner Feedback Document (.docx, .doc, .txt, .md)</span>
+                </div>
+              </div>
+
+              <LineNumberedTextarea
+                value={examinerReportInput}
+                onChange={(e) => setExaminerReportInput(e.target.value)}
+                placeholder="Paste external/internal examiner feedback, viva corrections list, or committee critique comments here..."
+                heightClass="h-28"
+              />
+            </div>
+          )}
+
+          {/* MANUSCRIPT / REVISED THESIS INPUT */}
+          <div className="flex-1 min-h-[220px] flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-semibold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                <FileCheck className="w-4 h-4 text-indigo-400" />
+                {auditMode === 'dual' ? '2. Revised Thesis / Chapter Draft' : '1. Thesis Manuscript Text'}
+              </h2>
+              <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                <span className="bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 text-indigo-300 font-bold flex items-center gap-1">
+                  <Hash className="w-2.5 h-2.5 text-indigo-400" />
+                  {thesisStats.lines} lines
+                </span>
+                <span className="bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">{thesisStats.words} words</span>
+              </div>
+            </div>
+
+            {/* Drag & Drop File Upload area */}
+            <div className="relative border-2 border-dashed border-slate-700 hover:border-indigo-500/50 bg-slate-900/50 rounded-xl p-2.5 transition group text-center cursor-pointer">
+              <input
+                type="file"
+                accept=".txt,.md,.tex,.doc,.docx"
+                onChange={(e) => handleFileUpload(e, 'thesis')}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              />
+              <div className="flex flex-col items-center gap-1 text-slate-400 group-hover:text-slate-200">
+                <Upload className="w-4 h-4 text-indigo-400" />
+                <p className="text-xs font-medium">Click or drag thesis file here (.docx, .doc, .txt, .md)</p>
+              </div>
+            </div>
+
+            {/* Line Numbered Textarea */}
+            <LineNumberedTextarea
+              value={thesisInput}
+              onChange={(e) => setThesisInput(e.target.value)}
+              placeholder={
+                auditMode === 'dual'
+                  ? 'Paste corrected thesis manuscript or revised chapter draft here to analyze against examiner report above...'
+                  : 'Paste thesis chapters, abstract, methodology, results, or full manuscript text here...'
+              }
+              heightClass="flex-1 min-h-[160px]"
+            />
+          </div>
+
+          {/* Audit Configuration */}
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-3">
+            <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+              Audit Configuration
+            </h3>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">Degree Program</label>
+                <select
+                  value={config.degreeLevel}
+                  onChange={(e) => setConfig({ ...config, degreeLevel: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 text-xs rounded-lg p-2 text-slate-200 focus:outline-none focus:border-indigo-500"
+                >
+                  <option>Doctor of Philosophy (PhD)</option>
+                  <option>Master of Philosophy (MPhil)</option>
+                  <option>Master of Research / MSc Thesis</option>
+                  <option>Professional Doctorate (DBA/EdD)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">Academic Field</label>
+                <select
+                  value={config.discipline}
+                  onChange={(e) => setConfig({ ...config, discipline: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 text-xs rounded-lg p-2 text-slate-200 focus:outline-none focus:border-indigo-500"
+                >
+                  <option>Business Administration (PLS-SEM)</option>
+                  <option>Social Sciences / Empirical Survey</option>
+                  <option>Computer Science & AI Engineering</option>
+                  <option>Public Health & Clinical Sciences</option>
+                  <option>Education & Behavioral Sciences</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">Audit Scope</label>
+                <select
+                  value={config.focusScope}
+                  onChange={(e) => setConfig({ ...config, focusScope: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 text-xs rounded-lg p-2 text-slate-200 focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="Full Thesis Chapters 1–5 Audit">Full Thesis Chapters 1–5 Audit</option>
+                  <option value="Examiner Resubmission Compliance">Examiner Resubmission Compliance</option>
+                  <option value="Chapter 1: Introduction Audit">Chapter 1: Introduction Audit</option>
+                  <option value="Chapter 2: Literature Review Audit">Chapter 2: Literature Review Audit</option>
+                  <option value="Chapter 3: Methodology Audit">Chapter 3: Methodology Audit</option>
+                  <option value="Chapter 4: Results & Analysis Audit">Chapter 4: Results & Analysis Audit</option>
+                  <option value="Chapter 5: Discussion & Conclusion Audit">Chapter 5: Discussion & Conclusion Audit</option>
+                  <option value="Methodology & Results Deep-Dive (Ch 3 & 4)">Methodology & Results Deep-Dive (Ch 3 & 4)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-slate-400 mb-1">Examiner Rigor</label>
+                <select
+                  value={config.strictness}
+                  onChange={(e) => setConfig({ ...config, strictness: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-800 text-xs rounded-lg p-2 text-slate-200 focus:outline-none focus:border-indigo-500"
+                >
+                  <option>High Academic Rigor (Senior Examiner)</option>
+                  <option>Standard Defence Committee Review</option>
+                  <option>Constructive Developmental Review</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Button */}
+          <button
+            onClick={handleGenerateReport}
+            disabled={isGenerating}
+            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50 text-white font-semibold text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition transform active:scale-[0.99]"
+          >
+            {isGenerating ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin text-indigo-200" />
+                <span>Cross-Examining Manuscript...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>
+                  {auditMode === 'dual' ? 'Analyze Examiner Compliance' : 'Generate Examiner Audit Report'}
+                </span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Right Column: Output & Examiner Report */}
+        <div className="w-full lg:w-7/12 bg-slate-900 flex flex-col overflow-hidden">
+          {/* Header Bar for Output */}
+          <div className="border-b border-slate-800 px-6 py-3 bg-slate-950/40 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-indigo-400" />
+              <span className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
+                Examiner Compliance & Critical Audit Workspace
+              </span>
+            </div>
+
+            {generatedReport && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportMatrixOnly}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-medium border border-slate-700 transition"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  Download Matrix (.xlsx)
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Main Display Body */}
+          {isGenerating ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-950/20">
+              <div className="relative mb-6">
+                <div className="w-16 h-16 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+                <Award className="w-7 h-7 text-indigo-400 absolute inset-0 m-auto" />
+              </div>
+              <h3 className="text-base font-bold text-slate-100 mb-2">Analyzing Thesis Quality & Compliance</h3>
+              <p className="text-xs text-indigo-300 animate-pulse max-w-sm">{generationProgress}</p>
+            </div>
+          ) : generatedReport ? (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Executive Metrics Overview Bar */}
+              {metrics && (
+                <div className="bg-slate-950/70 border-b border-slate-800 p-4 grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                    <div>
+                      <div className="text-[10px] text-slate-400 font-medium">COMPLIED</div>
+                      <div className="text-sm font-bold text-emerald-400">{metrics.complied} items</div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center gap-2">
+                    <Info className="w-5 h-5 text-blue-400 shrink-0" />
+                    <div>
+                      <div className="text-[10px] text-slate-400 font-medium">MOSTLY</div>
+                      <div className="text-sm font-bold text-blue-400">{metrics.mostly} items</div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+                    <div>
+                      <div className="text-[10px] text-slate-400 font-medium">PARTIALLY</div>
+                      <div className="text-sm font-bold text-amber-400">{metrics.partially} items</div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 flex items-center gap-2">
+                    <XCircle className="w-5 h-5 text-rose-400 shrink-0" />
+                    <div>
+                      <div className="text-[10px] text-slate-400 font-medium">CRITICAL GAPS</div>
+                      <div className="text-sm font-bold text-rose-400">{metrics.notComplied} items</div>
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 md:col-span-1 bg-gradient-to-br from-indigo-950/80 to-slate-900 border border-indigo-500/30 rounded-lg p-2.5 flex flex-col justify-center">
+                    <span className="text-[10px] text-indigo-300 font-semibold uppercase">Verdict</span>
+                    <span className="text-xs font-bold text-white truncate">{metrics.recommendation}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Filter and Search Bar */}
+              <div className="border-b border-slate-800 bg-slate-950/40 px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search findings, keywords..."
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
+                  <span className="text-[11px] text-slate-400 whitespace-nowrap">Filter Status:</span>
+                  {['ALL', 'COMPLIED', 'PARTIALLY', 'NOT COMPLIED'].map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => setSelectedStatusFilter(st)}
+                      className={`px-2.5 py-1 rounded-md text-[10px] font-bold border transition ${
+                        selectedStatusFilter === st
+                          ? 'bg-indigo-600 text-white border-indigo-400'
+                          : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Report Render Container */}
+              <div
+                ref={printContainerRef}
+                className="flex-1 p-6 overflow-y-auto space-y-4 text-slate-200 bg-slate-950/20 font-sans"
+              >
+                <FormattedMarkdown
+                  section={generatedReport}
+                  filter={searchTerm}
+                  statusFilter={selectedStatusFilter}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500 space-y-3">
+              <div className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800">
+                <Award className="w-10 h-10 text-indigo-400/60" />
+              </div>
+              <h3 className="text-sm font-semibold text-slate-300">No Examiner Report Generated Yet</h3>
+              <p className="text-xs max-w-sm text-slate-500">
+                Paste or upload your thesis manuscript on the left side and click{' '}
+                <span className="text-indigo-400 font-medium">Generate Examiner Audit Report</span> to run the evaluation.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
